@@ -7,6 +7,7 @@ data/
 # PDFs und Rohextrakte (nicht deploy-relevant)
 docs/
 cache/raw/
+cache/whisper/
 cache/opus_raw.txt
 preprocess.log
 

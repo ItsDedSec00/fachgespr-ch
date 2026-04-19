@@ -394,88 +394,94 @@ document.getElementById('logout-btn').addEventListener('click', async () => {
   showLogin();
 });
 
-// ==================== Speech-to-Text (Web Speech API) ====================
+// ==================== Speech-to-Text (serverseitig, Whisper) ====================
 function attachMic(btnId, textareaId, statusId) {
   const btn = document.getElementById(btnId);
   const ta = document.getElementById(textareaId);
   let status = statusId ? document.getElementById(statusId) : null;
   if (!btn || !ta) return;
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
+
+  if (!navigator.mediaDevices || !window.MediaRecorder) {
     btn.disabled = true;
-    btn.title = 'Diktieren wird vom Browser nicht unterstützt (Chrome/Edge nutzen)';
+    btn.title = 'Mikrofon-API wird vom Browser nicht unterstützt';
     return;
   }
-
-  // Sicherer Kontext prüfen: Web Speech braucht HTTPS oder localhost.
   if (!window.isSecureContext) {
     btn.disabled = true;
-    btn.title = 'Diktieren braucht HTTPS oder localhost (aktuelle URL nicht erlaubt)';
+    btn.title = 'Aufnahme braucht HTTPS oder localhost';
     btn.style.opacity = '0.5';
     return;
   }
 
-  // Falls keine Statuszeile existiert, eine an den Button hängen.
   if (!status) {
     status = document.createElement('div');
     status.className = 'mic-status';
     btn.closest('.answer-wrap')?.insertAdjacentElement('afterend', status);
   }
 
-  let rec = null;
-  let baseText = '';
-  let finalText = '';
-
-  const errorText = (code) => ({
-    'not-allowed': 'Mikrofon-Zugriff blockiert. Im Browser-Schloss-Symbol erlauben.',
-    'service-not-allowed': 'Spracherkennung vom System blockiert.',
-    'no-speech': 'Nichts gehört — nochmal versuchen.',
-    'audio-capture': 'Kein Mikrofon gefunden.',
-    'network': 'Netzwerkfehler — Chrome braucht Internet für die Spracherkennung.',
-    'aborted': 'Abgebrochen.',
-  }[code] || 'Fehler: ' + code);
-
+  let recorder = null;
+  let stream = null;
+  let chunks = [];
   const setStatus = (msg) => { if (status) status.textContent = msg || ''; };
 
-  btn.addEventListener('click', () => {
-    if (rec) { rec.stop(); return; }
-    rec = new SR();
-    rec.lang = 'de-DE';
-    rec.continuous = true;
-    rec.interimResults = true;
+  const stop = () => {
+    if (recorder && recorder.state !== 'inactive') recorder.stop();
+  };
 
-    baseText = ta.value.replace(/\s+$/, '');
-    finalText = '';
+  btn.addEventListener('click', async () => {
+    if (recorder && recorder.state === 'recording') { stop(); return; }
 
-    rec.onstart = () => {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (e) {
+      setStatus('Mikrofon-Zugriff verweigert: ' + (e.message || e.name));
+      return;
+    }
+
+    const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4']
+      .find(t => MediaRecorder.isTypeSupported(t)) || '';
+    try {
+      recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+    } catch (e) {
+      setStatus('Recorder-Fehler: ' + e.message);
+      stream.getTracks().forEach(t => t.stop());
+      return;
+    }
+    chunks = [];
+    recorder.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+    recorder.onstart = () => {
       btn.classList.add('recording');
       btn.textContent = '⏹';
-      setStatus('🎙️ Höre zu… nochmal klicken zum Stoppen.');
+      setStatus('🎙️ Nehme auf… nochmal klicken zum Stoppen.');
     };
-    rec.onresult = (e) => {
-      let interim = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const t = e.results[i][0].transcript;
-        if (e.results[i].isFinal) finalText += t + ' ';
-        else interim += t;
-      }
-      const sep = baseText ? (baseText.endsWith('.') || baseText.endsWith('?') || baseText.endsWith('!') ? ' ' : ' ') : '';
-      ta.value = (baseText + sep + finalText + interim).trimStart();
-      ta.scrollTop = ta.scrollHeight;
-    };
-    let lastError = null;
-    rec.onerror = (e) => {
-      lastError = e.error;
-      console.warn('SpeechRecognition error:', e.error, e);
-      setStatus(errorText(e.error));
-    };
-    rec.onend = () => {
+    recorder.onstop = async () => {
       btn.classList.remove('recording');
       btn.textContent = '🎤';
-      if (!lastError) setStatus('');
-      rec = null;
+      stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
+      if (blob.size < 500) { setStatus('Zu kurze Aufnahme.'); return; }
+      setStatus('Transkribiere… (erste Anfrage kann länger dauern, Modell wird geladen)');
+      const ext = (recorder.mimeType.includes('mp4') ? 'm4a' : 'webm');
+      const fd = new FormData();
+      fd.append('audio', blob, 'rec.' + ext);
+      try {
+        const r = await fetch('/api/transcribe', { method: 'POST', body: fd });
+        if (!r.ok) throw new Error(await r.text());
+        const d = await r.json();
+        const text = (d.text || '').trim();
+        if (text) {
+          const base = ta.value.replace(/\s+$/, '');
+          ta.value = (base ? base + ' ' : '') + text;
+          ta.scrollTop = ta.scrollHeight;
+          setStatus('');
+        } else {
+          setStatus('Nichts erkannt.');
+        }
+      } catch (e) {
+        setStatus('Fehler: ' + e.message);
+      }
     };
-    try { rec.start(); } catch (e) { setStatus('Konnte nicht starten: ' + e.message); rec = null; }
+    recorder.start();
   });
 }
 
