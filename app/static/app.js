@@ -398,7 +398,7 @@ document.getElementById('logout-btn').addEventListener('click', async () => {
 function attachMic(btnId, textareaId, statusId) {
   const btn = document.getElementById(btnId);
   const ta = document.getElementById(textareaId);
-  const status = statusId ? document.getElementById(statusId) : null;
+  let status = statusId ? document.getElementById(statusId) : null;
   if (!btn || !ta) return;
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
@@ -407,9 +407,33 @@ function attachMic(btnId, textareaId, statusId) {
     return;
   }
 
+  // Sicherer Kontext prüfen: Web Speech braucht HTTPS oder localhost.
+  if (!window.isSecureContext) {
+    btn.disabled = true;
+    btn.title = 'Diktieren braucht HTTPS oder localhost (aktuelle URL nicht erlaubt)';
+    btn.style.opacity = '0.5';
+    return;
+  }
+
+  // Falls keine Statuszeile existiert, eine an den Button hängen.
+  if (!status) {
+    status = document.createElement('div');
+    status.className = 'mic-status';
+    btn.closest('.answer-wrap')?.insertAdjacentElement('afterend', status);
+  }
+
   let rec = null;
   let baseText = '';
   let finalText = '';
+
+  const errorText = (code) => ({
+    'not-allowed': 'Mikrofon-Zugriff blockiert. Im Browser-Schloss-Symbol erlauben.',
+    'service-not-allowed': 'Spracherkennung vom System blockiert.',
+    'no-speech': 'Nichts gehört — nochmal versuchen.',
+    'audio-capture': 'Kein Mikrofon gefunden.',
+    'network': 'Netzwerkfehler — Chrome braucht Internet für die Spracherkennung.',
+    'aborted': 'Abgebrochen.',
+  }[code] || 'Fehler: ' + code);
 
   const setStatus = (msg) => { if (status) status.textContent = msg || ''; };
 
@@ -439,13 +463,16 @@ function attachMic(btnId, textareaId, statusId) {
       ta.value = (baseText + sep + finalText + interim).trimStart();
       ta.scrollTop = ta.scrollHeight;
     };
+    let lastError = null;
     rec.onerror = (e) => {
-      setStatus('Fehler: ' + e.error);
+      lastError = e.error;
+      console.warn('SpeechRecognition error:', e.error, e);
+      setStatus(errorText(e.error));
     };
     rec.onend = () => {
       btn.classList.remove('recording');
       btn.textContent = '🎤';
-      setStatus('');
+      if (!lastError) setStatus('');
       rec = null;
     };
     try { rec.start(); } catch (e) { setStatus('Konnte nicht starten: ' + e.message); rec = null; }
