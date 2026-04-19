@@ -82,7 +82,14 @@ document.getElementById('q-submit').addEventListener('click', async () => {
   const btn = document.getElementById('q-submit');
   btn.disabled = true; btn.textContent = 'Bewerte…';
   const resultBox = document.getElementById('q-result');
-  resultBox.innerHTML = '<p class="loading">Claude bewertet…</p>';
+  const stopLoader = startLoader(resultBox, [
+    'Antwort wird gelesen…',
+    'Abgleich mit Lehrmaterial…',
+    'Stärken und Schwächen identifizieren…',
+    'Musterantwort formulieren…',
+    'Schwachstellen ableiten…',
+    'Fast fertig…',
+  ]);
   try {
     const r = await fetch('/api/grade', {
       method: 'POST', headers: {'Content-Type':'application/json'},
@@ -94,9 +101,44 @@ document.getElementById('q-submit').addEventListener('click', async () => {
   } catch (e) {
     resultBox.innerHTML = `<p style="color:red">Fehler: ${escapeHtml(e.message)}</p>`;
   } finally {
+    stopLoader();
     btn.disabled = false; btn.textContent = 'Antwort bewerten';
   }
 });
+
+function startLoader(el, steps) {
+  el.innerHTML = `
+    <div class="grade-loader">
+      <div class="row1">
+        <div class="spinner"></div>
+        <div class="status">${escapeHtml(steps[0])}</div>
+        <div class="elapsed">0.0 s</div>
+      </div>
+      <div class="progress-track"></div>
+    </div>`;
+  const statusEl = el.querySelector('.status');
+  const elapsedEl = el.querySelector('.elapsed');
+  const t0 = performance.now();
+  let idx = 0;
+  const stepTimer = setInterval(() => {
+    idx = Math.min(idx + 1, steps.length - 1);
+    statusEl.textContent = steps[idx];
+  }, 2500);
+  const tickTimer = setInterval(() => {
+    const s = (performance.now() - t0) / 1000;
+    elapsedEl.textContent = s.toFixed(1) + ' s';
+  }, 100);
+  return () => { clearInterval(stepTimer); clearInterval(tickTimer); };
+}
+
+function mdBlock(text) {
+  if (!text) return '';
+  try { return marked.parse(String(text)); } catch { return escapeHtml(text); }
+}
+function mdInline(text) {
+  if (!text) return '';
+  try { return marked.parseInline(String(text)); } catch { return escapeHtml(text); }
+}
 
 function renderGrade(d) {
   const s = d.score ?? 0;
@@ -107,12 +149,12 @@ function renderGrade(d) {
     ${list('Schwächen', d.schwaechen)}
     ${list('Fehlende Aspekte', d.fehlende_aspekte)}
     <h4>Musterantwort</h4>
-    <div class="muster">${escapeHtml(d.musterantwort || '')}</div>
+    <div class="muster markdown">${mdBlock(d.musterantwort || '')}</div>
   `;
 }
 function list(title, items) {
   if (!items || !items.length) return '';
-  return `<h4>${title}</h4><ul>${items.map(i => `<li>${escapeHtml(i)}</li>`).join('')}</ul>`;
+  return `<h4>${title}</h4><ul class="markdown">${items.map(i => `<li>${mdInline(i)}</li>`).join('')}</ul>`;
 }
 
 // ==================== Quiz ====================
@@ -120,7 +162,13 @@ async function runQuiz(url, body, btn, labelDone) {
   const box = document.getElementById('quiz-box');
   const prev = btn.textContent;
   btn.disabled = true; btn.textContent = 'Generiere…';
-  box.innerHTML = '<p class="loading">Claude erzeugt Quiz…</p>';
+  const stopLoader = startLoader(box, [
+    'Themen wählen…',
+    'Fragen formulieren…',
+    'Antwortoptionen bauen…',
+    'Erklärungen ergänzen…',
+    'Fast fertig…',
+  ]);
   try {
     const r = await fetch(url, {
       method: 'POST', headers: {'Content-Type':'application/json'},
@@ -137,6 +185,7 @@ async function runQuiz(url, body, btn, labelDone) {
   } catch (e) {
     box.innerHTML = `<p style="color:red">Fehler: ${escapeHtml(e.message)}</p>`;
   } finally {
+    stopLoader();
     btn.disabled = false; btn.textContent = labelDone || prev;
   }
 }
@@ -156,12 +205,12 @@ function renderQuizItem(q, i) {
   const el = document.createElement('div');
   el.className = 'quiz-q';
   const topicBadge = q.topic ? `<div class="topic-pill">Schwachstelle: ${escapeHtml(q.topic)}</div>` : '';
-  el.innerHTML = `${topicBadge}<b>Frage ${i + 1}:</b> ${escapeHtml(q.frage)}<div class="options"></div>`;
+  el.innerHTML = `${topicBadge}<div class="frage"><b>Frage ${i + 1}:</b> ${escapeHtml(q.frage)}</div><div class="options"></div>`;
   const opts = el.querySelector('.options');
   (q.optionen || []).forEach((opt, idx) => {
     const o = document.createElement('label');
     o.className = 'option';
-    o.innerHTML = `<input type="radio" name="q${i}" value="${idx}" /> ${escapeHtml(opt)}`;
+    o.innerHTML = `<input type="radio" name="q${i}" value="${idx}" /><span>${escapeHtml(opt)}</span>`;
     o.querySelector('input').addEventListener('change', async () => {
       const gewaehlt = idx;
       opts.querySelectorAll('.option').forEach((node, j) => {
@@ -221,7 +270,7 @@ document.getElementById('chat-form').addEventListener('submit', async e => {
       if (done) break;
       const chunk = dec.decode(value, { stream: true });
       full += chunk;
-      assistantEl.textContent = full;
+      assistantEl.innerHTML = mdBlock(full);
       document.getElementById('chat-log').scrollTop = 1e9;
     }
     chatHistory.push({ role: 'assistant', content: full });
@@ -233,8 +282,9 @@ document.getElementById('chat-form').addEventListener('submit', async e => {
 function appendMsg(role, text) {
   const log = document.getElementById('chat-log');
   const el = document.createElement('div');
-  el.className = 'msg ' + role;
-  el.textContent = text;
+  el.className = 'msg ' + role + (role === 'assistant' ? ' markdown' : '');
+  if (role === 'assistant' && text) el.innerHTML = mdBlock(text);
+  else el.textContent = text;
   log.appendChild(el);
   log.scrollTop = 1e9;
   return el;

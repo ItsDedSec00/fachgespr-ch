@@ -26,28 +26,39 @@ def generate(req: QuizRequest, user: dict = Depends(current_user)) -> list[dict]
         raise HTTPException(500, f"Claude-Fehler: {e}")
 
 
+PER_TOPIC = 3
+
+
 @router.post("/from_weak")
 def from_weak(req: QuizRequest, user: dict = Depends(current_user)) -> dict:
-    n = max(1, min(10, req.n))
-    topics = active_weak_topics(user["id"], limit=n)
+    n = max(1, min(15, req.n))
+    # Anzahl Themen aus Gesamt-Fragen ableiten (PER_TOPIC Fragen je Thema)
+    num_topics = max(1, (n + PER_TOPIC - 1) // PER_TOPIC)
+    topics = active_weak_topics(user["id"], limit=num_topics)
     if not topics:
         return {"questions": [], "message": "Keine Schwachstellen vorhanden — erst offene Fragen beantworten und bewerten lassen."}
     try:
-        raw = generate_weak_quiz([t["topic"] for t in topics])
+        raw = generate_weak_quiz([t["topic"] for t in topics], per_topic=PER_TOPIC)
     except Exception as e:
         raise HTTPException(500, f"Claude-Fehler: {e}")
     by_topic = {t["topic"]: t["id"] for t in topics}
     questions = []
-    for i, q in enumerate(raw):
-        topic_name = q.get("topic") or topics[i]["topic"]
+    for q in raw:
+        topic_name = q.get("topic") or ""
+        topic_id = by_topic.get(topic_name)
+        if not topic_id and topics:
+            topic_id = topics[0]["id"]
+            topic_name = topics[0]["topic"]
         questions.append({
             "frage": q["frage"],
             "optionen": q["optionen"],
             "korrekt": q["korrekt"],
             "erklaerung": q.get("erklaerung", ""),
-            "topic_id": by_topic.get(topic_name) or topics[i]["id"],
+            "topic_id": topic_id,
             "topic": topic_name,
         })
+    # auf n Fragen trimmen (falls das Modell etwas mehr geliefert hat)
+    questions = questions[:n]
     return {"questions": questions}
 
 

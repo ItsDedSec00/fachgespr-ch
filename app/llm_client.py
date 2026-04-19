@@ -89,9 +89,14 @@ def generate_quiz(topic: str, n: int) -> list[dict]:
     return json.loads(_extract_json(text))
 
 
-def generate_weak_quiz(topics: list[str]) -> list[dict]:
+def generate_weak_quiz(topics: list[str], per_topic: int = 3) -> list[dict]:
     bullets = "\n".join(f"- {t}" for t in topics)
-    user_msg = f"Themen:\n{bullets}\n\nErzeuge zu jedem Thema genau eine MC-Frage."
+    user_msg = (
+        f"Themen:\n{bullets}\n\n"
+        f"Erzeuge zu JEDEM Thema GENAU {per_topic} MC-Fragen "
+        f"(insgesamt {per_topic * len(topics)} Fragen), "
+        "jede zu einer anderen Facette des Themas."
+    )
     text = _complete(WEAK_QUIZ_SYSTEM, user_msg)
     return json.loads(_extract_json(text))
 

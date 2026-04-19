@@ -35,10 +35,11 @@ main { max-width: 900px; margin: 0 auto; padding: 1.5rem; }
 .panel { display: none; background: var(--panel); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border); }
 .panel.active { display: block; }
 label { display: block; margin: 0.5rem 0; font-size: 0.9rem; color: var(--muted); }
-input, select, textarea {
+input:not([type=radio]):not([type=checkbox]), select, textarea {
   width: 100%; padding: 0.6rem; border: 1px solid var(--border);
   border-radius: 4px; font: inherit; margin-top: 0.25rem; background: #fff;
 }
+input[type=radio], input[type=checkbox] { width: auto; margin: 0; cursor: pointer; accent-color: var(--accent); }
 textarea { resize: vertical; font-family: inherit; }
 button {
   background: var(--accent); color: #fff; border: none;
@@ -66,7 +67,8 @@ button.secondary:hover { background: #d1d5db; }
 .topic.archived .bar > span { background: var(--ok); }
 .topic .label { flex:1; font-size:0.9rem; }
 .topic .counts { color:var(--muted); font-size:0.8rem; white-space:nowrap; }
-.topic-pill { display:inline-block; background:#fef3c7; color:#92400e; padding:0.1rem 0.5rem; border-radius:10px; font-size:0.75rem; margin-bottom:0.3rem; }
+.topic-pill { display:inline-block; background:#fef3c7; color:#92400e; padding:0.15rem 0.6rem; border-radius:10px; font-size:0.75rem; margin:0 0 0.5rem; }
+.quiz-q > .topic-pill { display: block; width: fit-content; }
 .result { margin-top: 1rem; }
 .score {
   display: inline-block; padding: 0.3rem 0.8rem; border-radius: 20px;
@@ -77,9 +79,28 @@ button.secondary:hover { background: #d1d5db; }
 .score.bad  { background: var(--bad); }
 .result h4 { margin: 0.8rem 0 0.3rem; }
 .result ul { margin: 0.3rem 0 0.8rem 1.2rem; padding: 0; }
-.muster { background: #eff6ff; padding: 0.8rem; border-radius: 4px; border-left: 3px solid var(--accent); }
-.quiz-q { background: #f9fafb; padding: 1rem; border-radius: 4px; margin: 0.8rem 0; }
-.quiz-q .option { display: block; padding: 0.5rem; cursor: pointer; border-radius: 4px; margin: 0.2rem 0; }
+.muster { background: #eff6ff; padding: 0.8rem 1rem; border-radius: 4px; border-left: 3px solid var(--accent); }
+.markdown h1, .markdown h2, .markdown h3, .markdown h4 { margin: 0.8rem 0 0.3rem; line-height: 1.3; }
+.markdown h1 { font-size: 1.1rem; }
+.markdown h2 { font-size: 1.05rem; }
+.markdown h3 { font-size: 1rem; }
+.markdown h4 { font-size: 0.95rem; }
+.markdown p { margin: 0.4rem 0; }
+.markdown ul, .markdown ol { margin: 0.3rem 0 0.6rem 1.2rem; padding: 0; }
+.markdown li { margin: 0.15rem 0; }
+.markdown li > p { margin: 0.15rem 0; }
+.markdown code { background: #eef2ff; padding: 0.05rem 0.3rem; border-radius: 3px; font-size: 0.9em; }
+.markdown strong { font-weight: 600; }
+.markdown > :first-child { margin-top: 0; }
+.markdown > :last-child { margin-bottom: 0; }
+.quiz-q { background: #f9fafb; padding: 1rem 1.2rem; border-radius: 6px; margin: 0.8rem 0; }
+.quiz-q .frage { margin-top: 0.4rem; font-weight: 500; }
+.quiz-q .options { margin-top: 0.6rem; display: flex; flex-direction: column; gap: 0.2rem; }
+.quiz-q .option {
+  display: flex; align-items: flex-start; gap: 0.6rem;
+  padding: 0.55rem 0.7rem; cursor: pointer; border-radius: 4px;
+  border: 1px solid transparent;
+}
 .quiz-q .option:hover { background: #eef2ff; }
 .quiz-q .option.correct { background: #dcfce7; }
 .quiz-q .option.wrong   { background: #fee2e2; }
@@ -101,6 +122,33 @@ button.secondary:hover { background: #d1d5db; }
 }
 .row .date { color: var(--muted); font-size: 0.8rem; }
 .loading { color: var(--muted); font-style: italic; }
+
+.grade-loader {
+  display: flex; flex-direction: column; gap: 0.7rem;
+  background: #f9fafb; padding: 1rem 1.2rem; border-radius: 6px;
+  border-left: 3px solid var(--accent);
+}
+.grade-loader .row1 { display: flex; align-items: center; gap: 0.7rem; }
+.spinner {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid #e5e7eb; border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite; flex: 0 0 auto;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.grade-loader .status { font-weight: 500; color: var(--ink); }
+.grade-loader .elapsed { color: var(--muted); font-size: 0.85rem; margin-left: auto; font-variant-numeric: tabular-nums; }
+.progress-track {
+  height: 5px; background: #e5e7eb; border-radius: 3px; overflow: hidden; position: relative;
+}
+.progress-track::before {
+  content: ""; position: absolute; left: -40%; top: 0; bottom: 0; width: 40%;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: slide 1.4s ease-in-out infinite;
+}
+@keyframes slide {
+  0%   { left: -40%; }
+  100% { left: 100%; }
+}
 
 .header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
 .user-box { display: flex; align-items: center; gap: 0.6rem; font-size: 0.9rem; color: var(--muted); }
