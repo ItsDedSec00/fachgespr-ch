@@ -394,6 +394,67 @@ document.getElementById('logout-btn').addEventListener('click', async () => {
   showLogin();
 });
 
+// ==================== Speech-to-Text (Web Speech API) ====================
+function attachMic(btnId, textareaId, statusId) {
+  const btn = document.getElementById(btnId);
+  const ta = document.getElementById(textareaId);
+  const status = statusId ? document.getElementById(statusId) : null;
+  if (!btn || !ta) return;
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    btn.disabled = true;
+    btn.title = 'Diktieren wird vom Browser nicht unterstützt (Chrome/Edge nutzen)';
+    return;
+  }
+
+  let rec = null;
+  let baseText = '';
+  let finalText = '';
+
+  const setStatus = (msg) => { if (status) status.textContent = msg || ''; };
+
+  btn.addEventListener('click', () => {
+    if (rec) { rec.stop(); return; }
+    rec = new SR();
+    rec.lang = 'de-DE';
+    rec.continuous = true;
+    rec.interimResults = true;
+
+    baseText = ta.value.replace(/\s+$/, '');
+    finalText = '';
+
+    rec.onstart = () => {
+      btn.classList.add('recording');
+      btn.textContent = '⏹';
+      setStatus('🎙️ Höre zu… nochmal klicken zum Stoppen.');
+    };
+    rec.onresult = (e) => {
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) finalText += t + ' ';
+        else interim += t;
+      }
+      const sep = baseText ? (baseText.endsWith('.') || baseText.endsWith('?') || baseText.endsWith('!') ? ' ' : ' ') : '';
+      ta.value = (baseText + sep + finalText + interim).trimStart();
+      ta.scrollTop = ta.scrollHeight;
+    };
+    rec.onerror = (e) => {
+      setStatus('Fehler: ' + e.error);
+    };
+    rec.onend = () => {
+      btn.classList.remove('recording');
+      btn.textContent = '🎤';
+      setStatus('');
+      rec = null;
+    };
+    try { rec.start(); } catch (e) { setStatus('Konnte nicht starten: ' + e.message); rec = null; }
+  });
+}
+
+attachMic('q-mic', 'q-answer', 'q-mic-status');
+attachMic('chat-mic', 'chat-input', null);
+
 // Init
 (async () => {
   const user = await checkAuth();

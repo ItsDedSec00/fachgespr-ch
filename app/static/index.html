@@ -51,7 +51,11 @@
       </div>
       <div id="q-kontext" class="box"></div>
       <div id="q-teilfragen" class="box"></div>
-      <textarea id="q-answer" placeholder="Deine Antwort…" rows="10"></textarea>
+      <div class="answer-wrap">
+        <textarea id="q-answer" placeholder="Deine Antwort…" rows="10"></textarea>
+        <button type="button" id="q-mic" class="mic-btn" title="Diktieren (Deutsch)" aria-label="Diktieren">🎤</button>
+      </div>
+      <div id="q-mic-status" class="mic-status"></div>
       <button id="q-submit">Antwort bewerten</button>
       <div id="q-result" class="result"></div>
     </section>
@@ -75,7 +79,10 @@
     <section id="tab-chat" class="panel">
       <div id="chat-log"></div>
       <form id="chat-form">
-        <textarea id="chat-input" placeholder="Frage stellen…" rows="2"></textarea>
+        <div class="answer-wrap chat-input-wrap">
+          <textarea id="chat-input" placeholder="Frage stellen…" rows="2"></textarea>
+          <button type="button" id="chat-mic" class="mic-btn" title="Diktieren (Deutsch)" aria-label="Diktieren">🎤</button>
+        </div>
         <button type="submit">Senden</button>
       </form>
     </section>
