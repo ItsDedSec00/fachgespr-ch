@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Fachgesprächs-Trainer</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header>
+    <div class="header-row">
+      <div>
+        <h1>Fachgesprächs-Trainer</h1>
+        <p class="sub">Meisterprüfung Personal · gpt-oss-120b via OpenRouter</p>
+      </div>
+      <div id="user-box" class="user-box" hidden>
+        <span id="user-name"></span>
+        <button id="logout-btn" class="secondary">Abmelden</button>
+      </div>
+    </div>
+    <nav>
+      <button class="tab active" data-tab="fragen">Fragen üben</button>
+      <button class="tab" data-tab="quiz">Quiz</button>
+      <button class="tab" data-tab="chat">Chat</button>
+      <button class="tab" data-tab="fortschritt">Fortschritt</button>
+    </nav>
+  </header>
+
+  <div id="login-overlay" class="login-overlay" hidden>
+    <form id="login-form" class="login-card">
+      <h2>Anmelden</h2>
+      <p class="sub">Neuer Nutzername legt automatisch ein Konto an.</p>
+      <label>Benutzername
+        <input id="login-username" autocomplete="username" required />
+      </label>
+      <label>PIN (6 Ziffern)
+        <input id="login-pin" inputmode="numeric" pattern="\d{6}" maxlength="6" autocomplete="current-password" required />
+      </label>
+      <div id="login-error" class="login-error"></div>
+      <button type="submit">Einloggen</button>
+    </form>
+  </div>
+
+  <main>
+    <!-- Fragen üben -->
+    <section id="tab-fragen" class="panel active">
+      <div class="q-toolbar">
+        <button id="q-next">Nächste Frage</button>
+        <button id="q-generate" class="secondary">Neue Fragen generieren</button>
+        <span id="q-meta" class="muted"></span>
+      </div>
+      <div id="q-kontext" class="box"></div>
+      <div id="q-teilfragen" class="box"></div>
+      <textarea id="q-answer" placeholder="Deine Antwort…" rows="10"></textarea>
+      <button id="q-submit">Antwort bewerten</button>
+      <div id="q-result" class="result"></div>
+    </section>
+
+    <!-- Quiz -->
+    <section id="tab-quiz" class="panel">
+      <label>Thema (optional):
+        <input id="quiz-topic" placeholder="z.B. Führungsstile, Delegation …" />
+      </label>
+      <label>Anzahl Fragen:
+        <input id="quiz-n" type="number" min="1" max="10" value="5" />
+      </label>
+      <div class="q-toolbar">
+        <button id="quiz-start">Quiz zum Thema</button>
+        <button id="quiz-weak" class="secondary">Aus meinen Schwachstellen üben</button>
+      </div>
+      <div id="quiz-box"></div>
+    </section>
+
+    <!-- Chat -->
+    <section id="tab-chat" class="panel">
+      <div id="chat-log"></div>
+      <form id="chat-form">
+        <textarea id="chat-input" placeholder="Frage stellen…" rows="2"></textarea>
+        <button type="submit">Senden</button>
+      </form>
+    </section>
+
+    <!-- Fortschritt -->
+    <section id="tab-fortschritt" class="panel">
+      <button id="progress-reload">Aktualisieren</button>
+      <div id="progress-stats"></div>
+      <h3>Schwachstellen</h3>
+      <div id="progress-topics"></div>
+      <h3>Letzte offene Antworten</h3>
+      <div id="progress-answers"></div>
+      <h3>Letzte Quiz-Versuche</h3>
+      <div id="progress-quiz"></div>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

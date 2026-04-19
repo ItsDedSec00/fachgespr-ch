@@ -1,0 +1,13 @@
+services:
+  app:
+    build: .
+    container_name: fachgespraech
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./cache:/app/cache
+      - ./docs:/app/docs:ro
+    restart: unless-stopped
